@@ -12,7 +12,7 @@ namespace Tests
     // TODO : is JINT thread safe
     
     [TestFixture]
-    public class UnitTest1
+    public class JintAndI18NextFixture
     {
         private Engine _engine;
         private ConcurrentDictionary<Tuple<string, string>, string> _cache;
