@@ -10,25 +10,34 @@ using ServiceStack.Text;
 namespace Tests
 {
     // TODO : is JINT thread safe
-    
+
     [TestFixture]
     public class JintAndI18NextFixture
     {
         private Engine _engine;
         private ConcurrentDictionary<Tuple<string, string>, string> _cache;
 
+        private string Translate(string property, string language)
+        {
+            return _engine.Invoke("tLanguage", property, language).AsString();
+        }
+
+        private string TranslateAndCache(string property, string language)
+        {
+            return _cache.GetOrAdd(new Tuple<string, string>(property, language),
+                key => _engine.Invoke("tLanguage", property, language).AsString());
+        }
+
         [Test]
-        public void TranslateWithJintWithResourcesOnCDN()
+        public void TranslateWithJintWithResourcesOnCdn()
         {
             JsConfig.ConvertObjectTypesIntoStringDictionary = true;
-            var i18next = "https://cdnjs.cloudflare.com/ajax/libs/i18next/8.1.0/i18next.min.js".GetStringFromUrl();
+            var i18Next = "https://cdnjs.cloudflare.com/ajax/libs/i18next/8.1.0/i18next.min.js".GetStringFromUrl();
 
-            _cache = new ConcurrentDictionary<Tuple<string,string>,string>();
-            
+            _cache = new ConcurrentDictionary<Tuple<string, string>, string>();
+
             _engine = new Engine();
-            _engine.Execute(i18next);
-
-            var language = "en";
+            _engine.Execute(i18Next);
 
             var translationEn =
                 "https://gist.githubusercontent.com/olivier5741/e6a61ba42a20d3225bd05665f8fb60aa/raw/770049a4cecc00cc418d96e8e3fa082429b185c8/main.en.json"
@@ -55,18 +64,16 @@ namespace Tests
               });");
 
             _engine.Execute("function tLanguage(p, l) { return i18next.t(p,{lng: l}); }");
-            
+
             var sw = new Stopwatch();
             sw.Start();
 
             for (var i = 0; i < 10000; i++)
-            {
-                var s = TranslateAndCache("input.placeholder", "en");
-            }
- 
+                TranslateAndCache("input.placeholder", "en"); // Translate("input.placeholder", "en")
+
             sw.Stop();
-            
-            sw.ElapsedMilliseconds.PrintDump(); 
+
+            sw.ElapsedMilliseconds.PrintDump();
             /*
              * On local machine inside NUnit
              * 1 -> 25ms
@@ -76,23 +83,12 @@ namespace Tests
              * 10000 -> 6508ms but 25ms when caching :)
              */
 
-            Assert.AreEqual("a placeholder",Translate("input.placeholder", "en"));
-            Assert.AreEqual("tapez voter texte",Translate("input.placeholder", "fr"));
-            
-            // caching
-            Assert.AreEqual("a placeholder",TranslateAndCache("input.placeholder", "en"));
-            Assert.AreEqual("tapez voter texte",TranslateAndCache("input.placeholder", "fr"));
-        }
+            Assert.AreEqual("a placeholder", Translate("input.placeholder", "en"));
+            Assert.AreEqual("tapez voter texte", Translate("input.placeholder", "fr"));
 
-        private string Translate(string property, string language)
-        {
-            return _engine.Invoke("tLanguage", property, language).AsString();
-        }
-        
-        private string TranslateAndCache(string property, string language)
-        {
-            return _cache.GetOrAdd(new Tuple<string, string>(property, language),
-                key => _engine.Invoke("tLanguage", property, language).AsString());
+            // caching
+            Assert.AreEqual("a placeholder", TranslateAndCache("input.placeholder", "en"));
+            Assert.AreEqual("tapez voter texte", TranslateAndCache("input.placeholder", "fr"));
         }
     }
 }
